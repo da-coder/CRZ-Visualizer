@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>CR-Z VisualiZer</title>
+		<style>
+			body { margin: 0; }
+		</style>
+	</head>
+	<body>
+		<script src="https://unpkg.com/three@0.146.0/build/three.js"></script>
+		<script src="https://unpkg.com/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
+		<script src="https://unpkg.com/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+		<script src="https://unpkg.com/three@0.146.0/examples/js/loaders/RGBELoader.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/lil-gui@0.17"></script>
+		<script>
+			// defines
+			let model_paths = [												// to load a new object, just add a new path to the end
+				'models/CRZ.gltf',
+				'models/wheel_stock.gltf',
+				'models/brakes_stock.gltf',
+				'models/wheel_tfr.gltf'
+			];
+			let models = [];												// array of all models in scene
+			let env_map_day_path = 'textures/HDR_111_Parking_Lot_2_Ref.hdr';
+			let env_map_night_path = 'textures/envmap_night.hdr';
+			let env_map_day;
+			let background_texture_day;
+			let env_map_night;
+			let background_texture_night;
+			let main_model = new THREE.Group();
+			let scene, camera, renderer, controls;
+			let light0, light1, light2;
+			let clock = new THREE.Clock();
+			let delta = 0;
+			let num_models = model_paths.length;							// number of models to load
+			let interval = 0.0167;											// set for 60fps
+			var GUI = lil.GUI;												// required for how i imported script
+
+			// non-static defines
+			let wtb_0 = new THREE.Group();									// wheel, tire, brake groups for suspension transforms
+			let wtb_1 = new THREE.Group();
+			let wtb_2 = new THREE.Group();
+			let wtb_3 = new THREE.Group();
+			let dv = {
+				day_night: true,											// true = day
+				headlights: false,											// on = true
+				auto_rotate: true,
+				ride_height: 10,
+				offset_fr: 45,
+				offset_rr: 45,
+				camber_fr: 0,
+				camber_rr: 0,
+				wheels: 'Stock',
+				current_wheels: 1,											// 1 = stock wheels, 3 = TFR, etc.
+				brakes: 'Stock',
+				current_brakes: 2 											// 2 = stock brakes, etc.
+			};
+			let wheel_TFR = new THREE.Object3D();							// single object for TFR wheel
+			let wheel_stock = new THREE.Object3D();							// single object for stock wheel
+
+			// functions
+			function init() {
+				// create renderer
+				renderer = new THREE.WebGLRenderer({antialias:true});
+				renderer.setSize(window.innerWidth,window.innerHeight);
+				renderer.shadowMap.enabled = true;
+				renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+				renderer.outputEncoding = THREE.sRGBEncoding;
+				document.body.appendChild(renderer.domElement);
+
+				// create scene
+				scene = new THREE.Scene();
+
+				// create envmaps
+				let env_loader = new THREE.RGBELoader();
+				env_loader.load(env_map_day_path, function (texture) {
+					let pmremGenerator = new THREE.PMREMGenerator(renderer);
+					pmremGenerator.compileEquirectangularShader();
+					env_map_day = pmremGenerator.fromEquirectangular(texture).texture;
+					pmremGenerator.dispose();
+
+					background_texture_day = texture;
+					background_texture_day.mapping = THREE.EquirectangularReflectionMapping;
+					background_texture_day.encoding = THREE.sRGBEncoding;
+
+					scene.background = background_texture_day;				// default is day
+					scene.environment = env_map_day;
+				});
+				env_loader.load(env_map_night_path, function (texture) {
+					let pmremGenerator = new THREE.PMREMGenerator(renderer);
+					pmremGenerator.compileEquirectangularShader();
+					env_map_night = pmremGenerator.fromEquirectangular(texture).texture;
+					pmremGenerator.dispose();
+
+					background_texture_night = texture;
+					background_texture_night.mapping = THREE.EquirectangularReflectionMapping;
+					background_texture_night.encoding = THREE.sRGBEncoding;
+				});
+
+				// create camera
+				camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 1000);
+				camera.rotation.y = 0.785;
+				camera.position.x = 30;
+				camera.position.y = 10;
+				camera.position.z = 30;
+				camera.autoRotate = true;
+
+				// add controls
+				controls = new THREE.OrbitControls(camera, renderer.domElement);
+				controls.maxPolarAngle = (Math.PI/2);						// set angle so user can't go under car
+				controls.autoRotate = true;
+				controls.autoRotateSpeed = 1.0;
+				controls.target.set(0,3,0);
+				controls.update();
+
+				// load default objects
+				loadModel(model_paths[0]);									// main model
+				loadModel(model_paths[1]);									// wheels (stock)
+				loadModel(model_paths[2]);									// brakes (stock)
+				
+				// load extras
+				for (let i=3; i<model_paths.length; i++) {
+					loadModel(model_paths[i]);
+				}
+			}
+
+			function setDefaults() {
+				// add lights
+				light0 = new THREE.AmbientLight(0xFFFFFF, 1);
+				light0.name = "light_ambient";
+
+				light1 = new THREE.DirectionalLight(0xFFFFFF, 1);
+				light1.name = "light_sun";
+				light1.position.set(50,20,0);
+				light1.shadow.camera.top = 30;
+				light1.shadow.camera.bottom = -30;
+				light1.shadow.camera.left = -30;
+				light1.shadow.camera.right = 30;
+				light1.castShadow = true;
+
+				light2 = new THREE.SpotLight(0xFFFFFF);
+				light2.penumbra = 1;
+				light2.name = "light_sun";
+				light2.position.set(-30,30,0);
+				light2.castShadow = true;
+				const targetObject = new THREE.Object3D();
+				targetObject.position.set(-30,0,0);
+				light2.target = targetObject;
+
+				// group tire, wheel, brakes together
+				models.forEach(function (model) {							// iterates over models
+					if (model.name.match(model_paths[0])) {					// checks selected scene name against model path
+						main_model.add(model);
+					} else if (model.name.match(model_paths[1])) {			// wheel
+						wheel_stock = model;
+						wtb_0.add(model.clone());
+						wtb_1.add(model.clone());
+						wtb_2.add(model.clone());
+						wtb_3.add(model.clone());
+					} else if (model.name.match(model_paths[2])) {			// brake
+						wtb_0.add(model.clone());
+						wtb_1.add(model.clone());
+						wtb_2.add(model.clone());
+						wtb_3.add(model.clone());
+					} else if (model.name.match(model_paths[3])) {			// extras will be set here
+						wheel_TFR = model;
+					} else {
+						window.alert('uncaught loaded model!');
+					}
+				});
+
+				// position wtb packages
+				placeCorner(wtb_0, 0, dv);									// set on each corner
+				placeCorner(wtb_1, 1, dv);
+				placeCorner(wtb_2, 2, dv);
+				placeCorner(wtb_3, 3, dv);
+
+				// manually create objects
+				const ground_geom = new THREE.CircleGeometry(1000, 32);
+				const ground_mat = new THREE.MeshStandardMaterial({color: 0x121010});
+				const ground = new THREE.Mesh(ground_geom, ground_mat);
+				ground.receiveShadow = true;
+				ground.rotateX(-Math.PI/2);
+				ground.name = "ground";
+
+				// add items to scene
+				scene.add(light0);
+				scene.add(light1);
+				scene.add(wtb_0);
+				scene.add(wtb_1);
+				scene.add(wtb_2);
+				scene.add(wtb_3);
+				scene.add(main_model);
+				scene.add(ground);
+				scene.add(targetObject);
+
+				// set default materials
+				let gl = main_model.getObjectByName("glass");
+				let tr = main_model.getObjectByName("transparent");
+				let mi = main_model.getObjectByName("mirrors");
+
+				let glass_mat = new THREE.MeshPhysicalMaterial({
+					transmission: 0.99,
+					opacity: 0,
+					roughness: 0,
+					color: 0xFFFFFF
+				});
+				gl.material = glass_mat;
+
+				let clear_plastic_mat = new THREE.MeshPhysicalMaterial({
+					transmission: 1,
+					opacity: 0,
+					roughness: 0,
+					color: 0xFFFFFF
+				});
+				tr.material = clear_plastic_mat;
+
+				let mirror_mat = new THREE.MeshPhysicalMaterial({
+					metalness: 1,
+					roughness: 0,
+					color: 0xFFFFFF
+				});
+				mi.material = mirror_mat;
+				wtb_0.getObjectByName("lugnuts").material = mirror_mat;
+				wtb_1.getObjectByName("lugnuts").material = mirror_mat;
+				wtb_2.getObjectByName("lugnuts").material = mirror_mat;
+				wtb_3.getObjectByName("lugnuts").material = mirror_mat;
+				wtb_0.getObjectByName("brake_rotors").material = mirror_mat;
+				wtb_1.getObjectByName("brake_rotors").material = mirror_mat;
+				wtb_2.getObjectByName("brake_rotors").material = mirror_mat;
+				wtb_3.getObjectByName("brake_rotors").material = mirror_mat;
+
+				let caliper_mat = new THREE.MeshPhysicalMaterial({
+					metalness: 0.2,
+					roughness: 0.26,
+					clearcoat: 1,
+					clearcoatRoughness: 0,
+					color: 0x808080
+				});
+				wtb_0.getObjectByName("calipers").material = caliper_mat;
+				wtb_1.getObjectByName("calipers").material = caliper_mat;
+				wtb_2.getObjectByName("calipers").material = caliper_mat;
+				wtb_3.getObjectByName("calipers").material = caliper_mat;
+
+				buildGUI();													// important that this only happens after defaults are set
+			}
+
+			function loadModel(path) {
+				let loader = new THREE.GLTFLoader();
+				// GLTFLoader
+				loader.load(path, function(gltf) {
+					// this runs after model is done loading
+					gltf.scene.scale.set(10,10,10);
+					gltf.scene.name = path;									// used to search through later
+					models.push(gltf.scene);								// not async safe!
+
+					gltf.scene.children.forEach(function(child) {
+						child.castShadow = true;							// enable cast shadows on each
+						child.material.envMapIntensity = 1;					// set env map to be much more bright
+					});
+
+					num_models--;
+					if (num_models === 0) {
+						setDefaults();										// important that this only runs after all objects are loaded
+					}
+				});
+			}
+
+			function placeCorner(group, corner, dyn_var) {					// corners: 0=fd, 1=fp, 2=rd, 3=rp
+				let calc_offset_f = 7.4 + (45 - dyn_var.offset_fr) / 20;	// 7.4 = 45 offset
+				let calc_offset_r = 7.4 + (45 - dyn_var.offset_rr) / 20;
+				let calc_camber_f = (-dyn_var.camber_fr / 180) * Math.PI;	// from degree to rad
+				let calc_camber_r = (-dyn_var.camber_rr / 180) * Math.PI;
+
+				switch (corner) {											// determine which corner wtb will be placed on
+				case 0:
+					group.position.set(calc_offset_f,3,10.9);
+					group.rotation.set(0,0,calc_camber_f);
+					group.scale.set(1,1,1);
+					break;
+				case 1:
+					group.position.set(-calc_offset_f,3,10.9);
+					group.rotation.set(0,Math.PI,calc_camber_f);
+					group.scale.set(1,1,-1);
+					break;
+				case 2:
+					group.position.set(calc_offset_r,3,-13.5);
+					group.rotation.set(0,0,calc_camber_r);
+					group.scale.set(1,1,-1);
+					break;
+				case 3:
+					group.position.set(-calc_offset_r,3,-13.5);
+					group.rotation.set(0,Math.PI,calc_camber_r);
+					group.scale.set(1,1,1);
+					break;
+				default:
+					group.position.set(0,0,0);
+					group.rotation.set(0,0,0);
+					group.scale.set(1,1,1);
+					break;
+				}
+			}
+
+			// animation loop
+			function animate() {
+				requestAnimationFrame(animate);
+
+				// limit FPS
+				delta += clock.getDelta();
+				if (delta > interval) {
+					renderer.render(scene, camera);
+					controls.update();
+					delta = delta % interval;
+				}
+			}
+
+			// build GUI
+			function buildGUI() {
+				// get body components from main_model
+				let upper_body = main_model.getObjectByName("upper_body");
+				let lower_body = main_model.getObjectByName("lower_body");
+				let glass = main_model.getObjectByName("glass");
+				let calipers = wtb_0.getObjectByName("calipers");
+
+				// construct
+				const gui = new GUI();
+				const ub_data = convertData(upper_body);					// this changes the object data to work with lil gui
+				const lb_data = convertData(lower_body);
+				const gl_data = convertData(glass);
+				const cp_data = convertData(calipers);
+
+				// folders
+				const gui_ev_folder = gui.addFolder('Environment');
+				gui_ev_folder.add(dv, 'day_night').onFinishChange(updateEnviornment());
+				gui_ev_folder.add(dv, 'headlights');
+				gui_ev_folder.add(dv, 'auto_rotate').onFinishChange(updateControls());
+				const gui_up_folder = gui.addFolder('Upper Body');
+				gui_up_folder.addColor(ub_data, 'color').onChange(updateColor(upper_body.material));
+				gui_up_folder.add(ub_data, 'paint_type', ['Matte', 'Gloss', 'Wrap']).onFinishChange(updateRoughness(upper_body.material));
+				const gui_lb_folder = gui.addFolder('Lower Body');
+				gui_lb_folder.addColor(lb_data, 'color').onChange(updateColor(lower_body.material));
+				gui_lb_folder.add(lb_data, 'paint_type', ['Matte', 'Gloss', 'Wrap']).onFinishChange(updateRoughness(lower_body.material));
+				const gui_mi_folder = gui.addFolder('Glass');
+				gui_mi_folder.add(gl_data, 'tint', 0, 1).onChange(updateTint(glass.material));
+				const gui_br_folder = gui.addFolder('Brakes');
+				gui_br_folder.add(dv, 'brakes', ['Stock', 'Wilwood DPHA']);
+				gui_br_folder.addColor(cp_data, 'color').onChange(updateColor(calipers.material));
+				const gui_rh_folder = gui.addFolder('Suspension');
+				gui_rh_folder.add(dv, 'ride_height', 0, 10).onChange(updateSuspension());
+				gui_rh_folder.add(dv, 'offset_fr', 35, 55).onChange(updateSuspension());
+				gui_rh_folder.add(dv, 'offset_rr', 35, 55).onChange(updateSuspension());
+				gui_rh_folder.add(dv, 'camber_fr', -30, 30).onChange(updateSuspension());
+				gui_rh_folder.add(dv, 'camber_rr', -30, 30).onChange(updateSuspension());
+				const gui_wh_folder = gui.addFolder('Wheels');
+				gui_wh_folder.add(dv, 'wheels', ['Stock', 'Enkei TFR', 'Enkei RPF1']).onFinishChange(updateWheels());
+			}
+
+			function convertData(object) {
+				const data = {
+					color: object.material.color.getHex(),
+					tint: 1,
+					paint_type: 'Gloss',
+					roughness: object.material.roughness,
+					clearcoat: object.material.clearcoat,
+					emissive: object.material.emissive,
+					emissiveIntensity: object.material.emissiveIntensity,
+					metalness: object.material.metalness
+				};
+
+				return data;
+			}
+
+			function updateColor(material) {
+				return function (value) {
+					// update color on object
+					let color = material.color;
+					color.setHex(value);
+					material.needsUpdate = true;
+				}
+			}
+
+			function updateRoughness(material) {
+				return function (value) {
+					// update color on object
+					switch(value) {
+					case 'Matte':
+						material.roughness = 0.6;
+						material.clearcoat = 0;
+						material.clearcoatRoughness = 1;
+						break;
+					case 'Gloss':
+						material.roughness = 0.26;
+						material.clearcoat = 1;
+						material.clearcoatRoughness = 0;
+						break;
+					case 'Wrap':
+						material.roughness = 0.5;
+						material.clearcoat = 0.5;
+						material.clearcoatRoughness = 0.5;
+						break;
+					}
+					material.needsUpdate = true;
+				}
+			}
+
+			function updateTint(material) {
+				return function (value) {
+					temp = Math.round(0xFF*Math.pow(value, 5));				// apply a ratio for intensity of color
+					temps = temp.toString(16);
+					value = '0x' + temps + temps + temps;					// this ensures R == G == B
+
+					let color = material.color;
+					color.setHex(value);
+					material.needsUpdate = true;
+				}
+			}
+
+			function updateSuspension() {
+				return function (value) {
+					let calc_rh = (dv.ride_height - 10)/6;					// calculate ride height as delta from stock
+					main_model.position.set(0,calc_rh,0);					// set ride height
+
+					placeCorner(wtb_0, 0, dv);								// set offsets and camber
+					placeCorner(wtb_1, 1, dv);
+					placeCorner(wtb_2, 2, dv);
+					placeCorner(wtb_3, 3, dv);
+				}
+			}
+
+			function updateWheels() {
+				return function (value) {
+					// remove current models from scene
+					scene.remove(wtb_0);
+					scene.remove(wtb_1);
+					scene.remove(wtb_2);
+					scene.remove(wtb_3);
+
+					// remove model group from wtb groups
+					wtb_0.remove(wtb_0.getObjectByName(model_paths[dv.current_wheels]));
+					wtb_1.remove(wtb_1.getObjectByName(model_paths[dv.current_wheels]));
+					wtb_2.remove(wtb_2.getObjectByName(model_paths[dv.current_wheels]));
+					wtb_3.remove(wtb_3.getObjectByName(model_paths[dv.current_wheels]));
+
+					// replace model groups with selection
+					switch (value) {
+					case 'Stock':
+						wtb_0.add(wheel_stock.clone());
+						wtb_1.add(wheel_stock.clone());
+						wtb_2.add(wheel_stock.clone());
+						wtb_3.add(wheel_stock.clone());
+
+						// update current_wheels
+						dv.current_wheels = 1;
+						break;
+					case 'Enkei TFR':
+						wtb_0.add(wheel_TFR.clone());
+						wtb_1.add(wheel_TFR.clone());
+						wtb_2.add(wheel_TFR.clone());
+						wtb_3.add(wheel_TFR.clone());
+
+						// update current_wheels
+						dv.current_wheels = 3;
+						break;
+					default:
+						wtb_0.add(wheel_stock.clone());
+						wtb_1.add(wheel_stock.clone());
+						wtb_2.add(wheel_stock.clone());
+						wtb_3.add(wheel_stock.clone());
+
+						// update current_wheels
+						dv.current_wheels = 1;
+						break;
+					}
+
+					// add models to scene
+					scene.add(wtb_0);
+					scene.add(wtb_1);
+					scene.add(wtb_2);
+					scene.add(wtb_3);
+				}
+			}
+
+			function updateEnviornment() {
+				return function (value) {
+					if (dv.day_night) {										// day
+						// remove lights
+						light0.color.setHex(0xFFFFFF);
+						light0.intensity = 1;
+						scene.remove(light2);
+
+						// add lights
+						scene.add(light1);
+						scene.background = background_texture_day;
+						scene.environment = env_map_day;
+					} else {												// night
+						// remove lights
+						scene.remove(light1);
+
+						// add lights
+						light0.color.setHex(0x202020);
+						light0.intensity = 0.3;
+						scene.add(light2);
+						scene.background = background_texture_night;
+						scene.environment = env_map_night;
+					}
+				}
+			}
+
+			function updateControls() {
+				return function (value) {
+					controls.autoRotate = value;
+				}
+			}
+
+			window.addEventListener('resize', function () {					// handle resize
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize(window.innerWidth, window.innerHeight);
+			}, false);
+
+			init();															// run
+			animate();
+
+			// other stuff
+		</script>
+	</body>
+</html>

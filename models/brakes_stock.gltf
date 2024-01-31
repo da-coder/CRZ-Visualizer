@@ -1,0 +1,366 @@
+{
+    "asset" : {
+        "generator" : "Khronos glTF Blender I/O v3.3.32",
+        "version" : "2.0"
+    },
+    "extensionsUsed" : [
+        "KHR_materials_clearcoat",
+        "KHR_materials_specular",
+        "KHR_materials_ior"
+    ],
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0,
+                1,
+                2
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "mesh" : 0,
+            "name" : "calipers"
+        },
+        {
+            "mesh" : 1,
+            "name" : "brake_rotors"
+        },
+        {
+            "mesh" : 2,
+            "name" : "dust_shields"
+        }
+    ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "extensions" : {
+                "KHR_materials_clearcoat" : {
+                    "clearcoatFactor" : 1,
+                    "clearcoatRoughnessFactor" : 0
+                },
+                "KHR_materials_specular" : {
+                    "specularColorFactor" : [
+                        2.371357614441398,
+                        2.371357614441398,
+                        2.371357614441398
+                    ]
+                },
+                "KHR_materials_ior" : {
+                    "ior" : 1.4500000476837158
+                }
+            },
+            "name" : "Brake Calipers",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.5,
+                    0.005419394467025995,
+                    0,
+                    1
+                ],
+                "metallicFactor" : 0.874015748500824,
+                "roughnessFactor" : 0.5527864098548889
+            }
+        },
+        {
+            "doubleSided" : true,
+            "name" : "Mirror",
+            "pbrMetallicRoughness" : {}
+        },
+        {
+            "doubleSided" : true,
+            "extensions" : {
+                "KHR_materials_specular" : {
+                    "specularColorFactor" : [
+                        2.371357614441398,
+                        2.371357614441398,
+                        2.371357614441398
+                    ]
+                },
+                "KHR_materials_ior" : {
+                    "ior" : 1.4500000476837158
+                }
+            },
+            "name" : "Black Plastic",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.0025793840177357197,
+                    0.0025793840177357197,
+                    0.0025793840177357197,
+                    1
+                ],
+                "metallicFactor" : 0,
+                "roughnessFactor" : 0.2614479064941406
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Mesh.004",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1,
+                        "TEXCOORD_0" : 2,
+                        "TEXCOORD_1" : 3
+                    },
+                    "indices" : 4,
+                    "material" : 0
+                }
+            ]
+        },
+        {
+            "name" : "Mesh.003",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 5,
+                        "NORMAL" : 6,
+                        "TEXCOORD_0" : 7,
+                        "TEXCOORD_1" : 8
+                    },
+                    "indices" : 9,
+                    "material" : 1
+                }
+            ]
+        },
+        {
+            "name" : "Mesh.008",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 10,
+                        "NORMAL" : 11,
+                        "TEXCOORD_0" : 12,
+                        "TEXCOORD_1" : 13
+                    },
+                    "indices" : 14,
+                    "material" : 2
+                }
+            ]
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 1144,
+            "max" : [
+                0.06617629528045654,
+                0.09365397691726685,
+                0.16159474849700928
+            ],
+            "min" : [
+                0.0025849975645542145,
+                -0.09192514419555664,
+                0.06467128545045853
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 1144,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5126,
+            "count" : 1144,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5126,
+            "count" : 1144,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 4,
+            "componentType" : 5123,
+            "count" : 4674,
+            "type" : "SCALAR"
+        },
+        {
+            "bufferView" : 5,
+            "componentType" : 5126,
+            "count" : 2950,
+            "max" : [
+                0.06885969638824463,
+                0.1450771689414978,
+                0.14500606060028076
+            ],
+            "min" : [
+                0.01145106926560402,
+                -0.14435070753097534,
+                -0.14499390125274658
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 6,
+            "componentType" : 5126,
+            "count" : 2950,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 7,
+            "componentType" : 5126,
+            "count" : 2950,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 8,
+            "componentType" : 5126,
+            "count" : 2950,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 9,
+            "componentType" : 5123,
+            "count" : 13800,
+            "type" : "SCALAR"
+        },
+        {
+            "bufferView" : 10,
+            "componentType" : 5126,
+            "count" : 914,
+            "max" : [
+                0.048388246446847916,
+                0.15434730052947998,
+                0.15429437160491943
+            ],
+            "min" : [
+                0.00149482861161232,
+                -0.15362076461315155,
+                -0.15428221225738525
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 11,
+            "componentType" : 5126,
+            "count" : 914,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 12,
+            "componentType" : 5126,
+            "count" : 914,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 13,
+            "componentType" : 5126,
+            "count" : 914,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 14,
+            "componentType" : 5123,
+            "count" : 4992,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 13728,
+            "byteOffset" : 0,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 13728,
+            "byteOffset" : 13728,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 9152,
+            "byteOffset" : 27456,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 9152,
+            "byteOffset" : 36608,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 9348,
+            "byteOffset" : 45760,
+            "target" : 34963
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 35400,
+            "byteOffset" : 55108,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 35400,
+            "byteOffset" : 90508,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 23600,
+            "byteOffset" : 125908,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 23600,
+            "byteOffset" : 149508,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 27600,
+            "byteOffset" : 173108,
+            "target" : 34963
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 10968,
+            "byteOffset" : 200708,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 10968,
+            "byteOffset" : 211676,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 7312,
+            "byteOffset" : 222644,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 7312,
+            "byteOffset" : 229956,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 9984,
+            "byteOffset" : 237268,
+            "target" : 34963
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 247252,
+            "uri" : "brakes_stock.bin"
+        }
+    ]
+}
